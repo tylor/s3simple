@@ -1,0 +1,26 @@
+
+
+// Use something like this to hold account details.
+/* struct samplefs_sb_info {
+	unsigned int rsize;
+	unsigned int wsize;
+	int flags;
+	struct nls_table *local_nls;
+};*/
+
+// struct hellofs_sb {}
+
+// 
+
+static struct address_space_operations hellofs_aops = {
+	readpage: hellofs_readpage
+};
+
+static struct file_operations hellofs_directory_operations = {
+	read:		generic_read_dir,
+	readdir:	hellofs_readdir,
+};
+
+static struct inode_operations hellofs_dir_inode_operations = {
+	lookup:		hellofs_lookup,
+};

@@ -1,0 +1,7 @@
+s3simple - an Amazon filesystem for Linux
+
+This is an implementation of an Amazon S3 filesystem for Linux with minimal dependencies. Currently it only depends on libcurl.
+
+** The code in this repository is highly experiemental but is a good example of a simple filesystem.
+
+Created as a term project while studying at the University of British Columbia.
