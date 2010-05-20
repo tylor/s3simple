@@ -195,7 +195,7 @@ static struct inode *get_hellofs_inode(struct super_block *sb, int is_dir)
 	if (inode) {
 		inode->i_mode = is_dir ? 040444 : 0100444;
 		inode->i_uid = 0;
-		//inode->i_size = BUF_LEN;
+		inode->i_size = 29;
 		inode->i_blocks = 1;
 		// inode->i_blksize = PAGE_CACHE_SIZE;
 		inode->i_gid = 0;

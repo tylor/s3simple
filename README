@@ -4,4 +4,20 @@ This is an implementation of an Amazon S3 filesystem for Linux with minimal depe
 
 ** The code in this repository is highly experiemental but is a good example of a simple filesystem.
 
+Quick build and test instructions:
+
+$ make
+$ sudo su
+# insmod hellofs.ko
+# ./getinmemory & # run getinmemory in the background
+# mount -t hellofs /dev/zero /mnt/ # mount virtual device on /mnt
+# cat /mnt/hello.txt # take a look at the file's contents
+# umount /mnt/
+# ps # to get the [pid] of getinmemory
+# kill [pid] # shut down getinmemory
+# rmmod hellofs
+# exit
+$ make clean # to clean up the compiled files
+
+
 Created as a term project while studying at the University of British Columbia.
