@@ -1,1 +1,0 @@
-cmd_/home/tylor/496/code/finalpieces/hellofs/hellofs.ko := ld -r -m elf_i386  --build-id -o /home/tylor/496/code/finalpieces/hellofs/hellofs.ko /home/tylor/496/code/finalpieces/hellofs/hellofs.o /home/tylor/496/code/finalpieces/hellofs/hellofs.mod.o
