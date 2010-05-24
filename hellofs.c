@@ -18,24 +18,18 @@ static struct file_operations hellofs_directory_operations;
 static struct address_space_operations hellofs_aops;
 static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd);
 
-int waiting = 0;
-//int flag_wait = 0;
+struct HelloCommand {
+	int waiting;
+	int the_flag;
+	int interesting;
+//	char * command;
+	char command[50];
+	char * data;
+} currentHelloCommand;
 
-/*struct MemoryStruct {
-	char *memory = NULL;
-	size_t size = 0;
-};*/
-
-#define BUF_LEN 80
-
-static char Message[BUF_LEN];
-
-//struct MemoryStruct message;
-
-int the_flag = 0;
+struct HelloCommand * currentCommand;
 
 DECLARE_WAIT_QUEUE_HEAD(flag_wait);
-
 
 struct hellofs_inode {
 
@@ -81,6 +75,17 @@ static int hellofs_readdir(struct file *filp, void *dirent, filldir_t filldir)
 	error = filldir(dirent, name, namelen, offset, ino, 0x1FF);
 
         offset += namelen + sizeof(*de);
+        
+        // ****
+        //const char* name2 = "hello2.txt";
+        //const ino_t ino2 = 2;
+        //const int namelen2 = strlen(name2);
+        
+        //error = filldir(dirent, name2, namelen2, offset, ino2, 0x1FF);
+
+        //offset += namelen2 + sizeof(*de);
+        // ***
+        
 
 	filp->f_pos = offset;
         
@@ -97,14 +102,15 @@ static char * hello_read()
 	
 	//printk("Requested path: %s", file->f_path);
 	
-	waiting = 1;
-	the_flag = 0;
+	currentCommand->waiting = 1;
+	currentCommand->the_flag = 0;
 
-	wait_event(flag_wait, (the_flag == 1)); // unconditionally wait
+	wait_event(flag_wait, (currentCommand->the_flag == 1)); // unconditionally wait
 	// char *hello_str = "Hello, worldsssss!\n";
-	printk(KERN_INFO "Message working: %s.\n", Message);
+	//printk(KERN_INFO "Message working: %s.\n", Message);
 	
-	return Message;
+	//return Message;
+	return "hmm";
 	/*
 	char *hello_str = Message;
 	//buf = Message;
@@ -151,21 +157,20 @@ static int hellofs_readpage(struct file *file, struct page * page)
 	
 	//ssize_t len = 5;
 	//char * buf = hello_read();
-	waiting = 1;
-	the_flag = 0;
+	currentCommand->waiting = 1;
+	currentCommand->the_flag = 0;
+	strcpy(currentCommand->command, "hello.txt");
 
-	wait_event(flag_wait, (the_flag == 1)); // unconditionally wait
+	wait_event(flag_wait, (currentCommand->the_flag == 1)); // unconditionally wait
 	
-	char * buf = Message;
+	char * buf = currentCommand->data;
 	int len = strlen(buf);
 	
 	printk(KERN_INFO "Message: %s\n", buf);
 	printk(KERN_INFO "Length: %d\n", len);
 
 	memcpy(pgdata, buf, len);
-				printk(KERN_INFO "Inside here 1.\n");
   memset(pgdata + len, 'x', PAGE_CACHE_SIZE - len);
-  			printk(KERN_INFO "Inside here 2.\n");
 	
 	//flush_dcache_page(page);
 
@@ -218,7 +223,7 @@ static struct inode *get_hellofs_inode(struct super_block *sb, int is_dir)
 }
 
 /*
- * Lookup and fill in the inode data..
+ * Lookup and fill in the inode data... probably add the directory listing here.
  */
 static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
 {
@@ -228,7 +233,7 @@ static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, 
 
 	retval = memcmp(dentry->d_name.name, "hello.txt", 9);
 	if(!retval) {
-		d_add(dentry, get_hellofs_inode(dir->i_sb, 0));      
+		d_add(dentry, get_hellofs_inode(dir->i_sb, 0));     
 	}
 	else {
 		d_add(dentry, NULL);
@@ -329,18 +334,23 @@ static char * get_from_s3(void)
  */
 static ssize_t hello_comm_read(struct file * file, char * buf, size_t count, loff_t *ppos)
 {
+	//printk("Just check text: %s\n", currentCommand->command);
+	//char new_command[100] = "cool stuff";
+	// memcpy(currentCommand->command, new_command, 100);
+	//memcpy(currentCommand->command, new_command, sizeof(new_command));
 //	flag_wait = 0;
 	//char *hello_str = "Hello, world!\n";
 
-	char *hello_str = "0";
-	if(waiting == 1) {
-		hello_str = "1";
-	}
+	//char *hello_str = "0";
+	//if(currentCommand->waiting == 1) {
+ 	//	hello_str = "1";
+ 	//}
 	
 	//the_flag = 1;
 	//wake_up_all(&flag_wait);
 	
-	int len = strlen(hello_str);
+	//int len = strlen(hello_str);
+	size_t len = sizeof(currentCommand->command);
 	
 	// read whole string
 	if (count < len)
@@ -349,7 +359,7 @@ static ssize_t hello_comm_read(struct file * file, char * buf, size_t count, lof
 	if (*ppos != 0)
 		return 0;
 
-	if (copy_to_user(buf, hello_str, len))
+	if (copy_to_user(buf, currentCommand->command, len))
 		return -EINVAL;
 
 	*ppos = len;
@@ -366,14 +376,18 @@ static ssize_t hello_comm_write(struct file *filep, const char *buff, size_t len
 
 	//printk("write(%p, %s, %d)", filep, buff, len);
 	
-	int i;
-	for(i=0; i<len && i<BUF_LEN; i++) {
-		get_user(Message[i], buff+i);
-	}
-	
-	waiting = 0;
-	the_flag = 1;
-	wake_up_all(&flag_wait);
+	// kfree(currentCommand->data);
+	currentCommand->data = (char *) kmalloc(len, GFP_KERNEL);
+ 	int i;
+	//for(i=0; i<len && i<BUF_LEN; i++) {
+	for(i=0; i<len; i++) {
+		get_user(currentCommand->data[i], buff+i);
+ 	}
+ 	
+  strcpy(currentCommand->command, "0");
+	currentCommand->waiting = 0;
+	currentCommand->the_flag = 1;
+ 	wake_up_all(&flag_wait);
 	
 	//printk("<1>Tylor sez: not supported yet.\n");
 	return i;
@@ -409,6 +423,18 @@ static struct miscdevice hello_dev = {
 static int __init init_hellofs(void)
 {
 	int ret;
+	
+	currentCommand = &currentHelloCommand;
+	currentCommand->waiting = 0;
+	currentCommand->the_flag = 0;
+  strcpy(currentCommand->command, "0");
+
+	//char new_command[50] = "dir";
+	// memcpy(currentCommand->command, new_command, 100);
+	//memcpy(currentCommand->command, new_command, sizeof(new_command));
+	//currentCommand->command = "dir";
+	//printk("Command location: %p", &(currentCommand->command));
+	//strcpy(currentCommand->command, "dir");
 
 	ret = misc_register(&hello_comm_dev);
 	ret = misc_register(&hello_dev);

@@ -22,6 +22,15 @@ struct MemoryStruct {
   char *memory;
   size_t size;
 };
+
+struct HelloCommand {
+	int waiting;
+	int the_flag;
+	int interesting;
+//	char * command;
+	char command[50];
+	char * data;
+} currentHelloCommand;
  
 static void *myrealloc(void *ptr, size_t size);
  
@@ -120,8 +129,8 @@ void performRead(void) {
   curl_global_cleanup();
 }
 
-int checkRequest(void) {
-	char buf[20];
+int checkForRequest(void) {
+	char buf[200]; // need a better solution, might now always be big enough.
 	size_t nbytes;
 	ssize_t bytes_read;
   int handle = open("/dev/hello", O_RDONLY);
@@ -129,9 +138,30 @@ int checkRequest(void) {
   nbytes = sizeof(buf);
   read(handle, buf, nbytes);
   
+  //struct HelloCommand * newCommand = (HelloCommand *)buf;
+  
+  //char cool[50];
+  //strcpy(cool, newCommand->command);
+  //printf("Work: %s\n", cool);
+  
+  /*std::cout << "Next might be something" << std::endl;
+  std::cout << newCommand->command << std::endl;
+  std::cout <<ps newCommand->interesting << std::endl;
+    std::cout << newCommand->waiting << std::endl;
+  printf("Num: %d\n", newCommand->waiting);
+	printf("Hmm: %d\n", newCommand->interesting);
+  //std::cout << cool << std::endl;
+  std::cout << "After the something" << std::endl;*/
+  //std::cout << buf << std::endl;
+	//if(1) {
+	//return 1;
+	//}
+  
   if(handle > 0) close(handle);
   
-  if(atoi(buf) != 0) {
+  //std::cout << buf << std::endl;
+  if(strcmp(buf, "0") != 0) {
+  	std::cout << buf << std::endl;
   	performRead();
   }
   
@@ -141,7 +171,7 @@ int checkRequest(void) {
 int main(int argc, char **argv)
 {
 	while(1) {
-		checkRequest();
+		checkForRequest();
   	sleep(0.1);
  }
   return 0;

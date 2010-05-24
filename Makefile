@@ -6,4 +6,4 @@ all:
 	g++ -lcurl getinmemory.cpp -o getinmemory
 clean:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) clean
-	rm -rf *o getinmemory
+	rm -rf *o getinmemory *~
