@@ -45,7 +45,7 @@ static void *myrealloc(void *ptr, size_t size)
 }
  
 static size_t
-WriteMemoryCallback(void *ptr, size_t size, size_t nmemb, void *data)
+fileCallback(void *ptr, size_t size, size_t nmemb, void *data)
 {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)data;
@@ -66,7 +66,29 @@ WriteMemoryCallback(void *ptr, size_t size, size_t nmemb, void *data)
   return realsize;
 }
 
-void performRead(void) {
+static size_t
+dirCallback(void *ptr, size_t size, size_t nmemb, void *data)
+{
+  size_t realsize = size * nmemb;
+  struct MemoryStruct *mem = (struct MemoryStruct *)data;
+ 
+  mem->memory = (char *) myrealloc(mem->memory, mem->size + realsize + 1);
+  if (mem->memory) {
+    memcpy(&(mem->memory[mem->size]), ptr, realsize);
+    mem->size += realsize;
+    mem->memory[mem->size] = 0;
+  }
+  
+  int handle = open("/dev/hello", O_RDWR);
+  write(handle, mem->memory, realsize);
+  if(handle > 0) close(handle);
+  
+  //printf("Request was performed.");
+  
+  return realsize;
+}
+
+void performRequest(std::string filename ) {
 	CURL *curl_handle;
  
   struct MemoryStruct chunk;
@@ -79,13 +101,16 @@ void performRead(void) {
   /* init the curl session */ 
   curl_handle = curl_easy_init();
  
- 
- 
-  /* specify URL to get */
-  curl_easy_setopt(curl_handle, CURLOPT_URL, "http://tylor.s3.amazonaws.com/README_public.txt");
- 
-  /* send all data to this function  */ 
-  curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+ 	std::string base_uri = "http://tylor.s3.amazonaws.com/";
+ 	if(filename == "dir") {
+ 		curl_easy_setopt(curl_handle, CURLOPT_URL, base_uri.c_str());
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, dirCallback);
+ 	}
+ 	else {
+		std::string url = base_uri + filename;
+		curl_easy_setopt(curl_handle, CURLOPT_URL, url.c_str());
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, fileCallback);
+ 	}
  
   /* we pass our 'chunk' struct to the callback function */ 
   curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
@@ -100,7 +125,8 @@ void performRead(void) {
   /* cleanup curl stuff */ 
   curl_easy_cleanup(curl_handle);
  
-	std::cout << "Request performed." << std::endl;
+	//std::cout << "Request performed:" << std::endl;
+	printf("Request performed: %s", filename.c_str());
 /*
 	int i;
 	for (i = 0; i < chunk.size; i++) {
@@ -138,6 +164,7 @@ int checkForRequest(void) {
   nbytes = sizeof(buf);
   read(handle, buf, nbytes);
   
+  // *** Code here is an attempt to rebuild a struct for better command handling.
   //struct HelloCommand * newCommand = (HelloCommand *)buf;
   
   //char cool[50];
@@ -159,10 +186,10 @@ int checkForRequest(void) {
   
   if(handle > 0) close(handle);
   
-  //std::cout << buf << std::endl;
+	// Check if we have a request.
   if(strcmp(buf, "0") != 0) {
   	std::cout << buf << std::endl;
-  	performRead();
+  	performRequest(buf);
   }
   
 	return atoi(buf);

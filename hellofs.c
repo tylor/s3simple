@@ -27,6 +27,13 @@ struct HelloCommand {
 	char * data;
 } currentHelloCommand;
 
+typedef struct {
+	char name[100];
+  int size;
+} s3files;
+
+s3files files[100];
+
 struct HelloCommand * currentCommand;
 
 DECLARE_WAIT_QUEUE_HEAD(flag_wait);
@@ -54,16 +61,72 @@ struct hellofs_inode {
 	return 0;
 } */
 
+static void hellofs_parse_files(char * response) {
+	//char * response_cut = response;
+	int start_contents, end_contents;
+	//int start_key, end_key;
+	char * start_key;
+	char * end_key;
+	int start_size, end_size;
+	char * key[100];
+	int i = 0;
+	int key_i;
+	//strcpy(next, response, 
+	
+	// While there are still more files.
+	//while(strstr(response_cut, "<Contents>")) {
+	
+		//start_contents = strstr(response, "<Contents>") + 10;
+	
+		//start_key = strstr(response, "<Key>");
+		//end_key = strstr(response, "</Key>");
+		
+		strncpy(key, strstr(response, "<Key>"), 6);
+		
+		//key = (char *) kmalloc(end_key - start_key, GFP_KERNEL);
+		/*for(key_i = 0; (start_key + key_i) < end_key && key_i < 100; key_i++) {
+			//key[key_i] = response[start_key + key_i];
+			printk("Blargh: ");
+			printk("%c", response[start_key + key_i]);
+			printk("\n");
+		}*/
+		//printk("My key: %s\n", key);
+		//strcpy(files[0].name, key);
+		
+	
+		//start_size = strstr(response, "<Size>") + 6;
+		//end_size = strstr(response, "</Size>");
+		
+		//files[i]->size = atoi();
+	
+		// end_contents = strstr(response, "</Contents>");
+		//i++;
+	//}
+}
+
 /*
  * Read a hellofs directory entry.
  */
 static int hellofs_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
+	currentCommand->waiting = 1;
+	currentCommand->the_flag = 0;
+	strcpy(currentCommand->command, "dir");
+
+	wait_event(flag_wait, (currentCommand->the_flag == 1)); // unconditionally wait
+	
+	char * buf = currentCommand->data;
+	int len = strlen(buf);
+	
+	// hellofs_parse_files(buf);
+	
+	//printk("Let's see: %s", files[0].name);
+
 	int error;
 
 	unsigned int offset = filp->f_pos;
 
-        const char* name = "hello.txt";
+        const char* name = "README_public.txt";
         const ino_t ino = 1;
         const int namelen = strlen(name);
 
@@ -77,13 +140,13 @@ static int hellofs_readdir(struct file *filp, void *dirent, filldir_t filldir)
         offset += namelen + sizeof(*de);
         
         // ****
-        //const char* name2 = "hello2.txt";
-        //const ino_t ino2 = 2;
-        //const int namelen2 = strlen(name2);
+        const char* name2 = "hello.txt";
+        const ino_t ino2 = 2;
+        const int namelen2 = strlen(name2);
         
-        //error = filldir(dirent, name2, namelen2, offset, ino2, 0x1FF);
+        error = filldir(dirent, name2, namelen2, offset, ino2, 0x1FF);
 
-        //offset += namelen2 + sizeof(*de);
+        offset += namelen2 + sizeof(*de);
         // ***
         
 
@@ -149,17 +212,13 @@ static int hellofs_readpage(struct file *file, struct page * page)
 {
 	void *pgdata;
 	pgdata = kmap(page);
-
-//	printk(KERN_DEBUG "hellofs_readpage\n");
-
-	//char * buf = "Cool\n";
-	//file * file;
 	
-	//ssize_t len = 5;
-	//char * buf = hello_read();
+	//file->f_dentry->d_name.name
+	//file->f_path.dentry->d_name.name
+
 	currentCommand->waiting = 1;
 	currentCommand->the_flag = 0;
-	strcpy(currentCommand->command, "hello.txt");
+	strcpy(currentCommand->command, file->f_path.dentry->d_name.name);
 
 	wait_event(flag_wait, (currentCommand->the_flag == 1)); // unconditionally wait
 	
@@ -170,6 +229,7 @@ static int hellofs_readpage(struct file *file, struct page * page)
 	printk(KERN_INFO "Length: %d\n", len);
 
 	memcpy(pgdata, buf, len);
+	// Set what we don't have to Xs, just in case.
   memset(pgdata + len, 'x', PAGE_CACHE_SIZE - len);
 	
 	//flush_dcache_page(page);
@@ -194,11 +254,9 @@ static struct file_operations hellofs_directory_operations = {
 static struct inode *get_hellofs_inode(struct super_block *sb, int is_dir)
 {
 	struct inode * inode = new_inode(sb);
-        //        printk(KERN_INFO "\n");
-	//printk(KERN_DEBUG "get_hellofs_inode\n");
 
 	if (inode) {
-		inode->i_mode = is_dir ? 040444 : 0100444;
+		inode->i_mode = is_dir ? 040444 : 0100444; // Give us readonly for each user.
 		inode->i_uid = 0;
 		inode->i_size = 29;
 		inode->i_blocks = 1;
@@ -223,7 +281,7 @@ static struct inode *get_hellofs_inode(struct super_block *sb, int is_dir)
 }
 
 /*
- * Lookup and fill in the inode data... probably add the directory listing here.
+ * Lookup and fill in the inode data.
  */
 static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
 {
@@ -231,12 +289,18 @@ static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, 
 
 //	printk(KERN_DEBUG "hellofs_lookup\n");
 
-	retval = memcmp(dentry->d_name.name, "hello.txt", 9);
+	retval = memcmp(dentry->d_name.name, "README_public.txt", 17); // push this comparison to get_hellofs_inode()
 	if(!retval) {
 		d_add(dentry, get_hellofs_inode(dir->i_sb, 0));     
 	}
 	else {
-		d_add(dentry, NULL);
+		retval = memcmp(dentry->d_name.name, "hello.txt", 9);
+		if(!retval) {
+			d_add(dentry, get_hellofs_inode(dir->i_sb, 0));     
+		}
+		else {
+			d_add(dentry, NULL);
+		}
 	}
 	return NULL;
 }
