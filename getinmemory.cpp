@@ -126,7 +126,7 @@ void performRequest(std::string filename ) {
   curl_easy_cleanup(curl_handle);
  
 	//std::cout << "Request performed:" << std::endl;
-	printf("Request performed: %s", filename.c_str());
+	//printf("Request performed: %s", filename.c_str());
 /*
 	int i;
 	for (i = 0; i < chunk.size; i++) {

@@ -28,7 +28,7 @@ struct HelloCommand {
 } currentHelloCommand;
 
 typedef struct {
-	char name[100];
+	char * name;
   int size;
 } s3files;
 
@@ -62,46 +62,25 @@ struct hellofs_inode {
 } */
 
 static void hellofs_parse_files(char * response) {
-	//char * response_cut = response;
-	int start_contents, end_contents;
-	//int start_key, end_key;
-	char * start_key;
-	char * end_key;
-	int start_size, end_size;
-	char * key[100];
 	int i = 0;
-	int key_i;
-	//strcpy(next, response, 
-	
-	// While there are still more files.
-	//while(strstr(response_cut, "<Contents>")) {
-	
-		//start_contents = strstr(response, "<Contents>") + 10;
-	
-		//start_key = strstr(response, "<Key>");
-		//end_key = strstr(response, "</Key>");
-		
-		strncpy(key, strstr(response, "<Key>"), 6);
-		
-		//key = (char *) kmalloc(end_key - start_key, GFP_KERNEL);
-		/*for(key_i = 0; (start_key + key_i) < end_key && key_i < 100; key_i++) {
-			//key[key_i] = response[start_key + key_i];
-			printk("Blargh: ");
-			printk("%c", response[start_key + key_i]);
-			printk("\n");
-		}*/
-		//printk("My key: %s\n", key);
-		//strcpy(files[0].name, key);
-		
-	
-		//start_size = strstr(response, "<Size>") + 6;
-		//end_size = strstr(response, "</Size>");
-		
-		//files[i]->size = atoi();
-	
-		// end_contents = strstr(response, "</Contents>");
-		//i++;
-	//}
+	char * next;
+  char * size_end;
+  
+  next = strstr(response, "<Contents>");
+  while(next != NULL) {
+  	files[i].name = (char *) kmalloc((strstr(next, "</Key>") - strstr(next, "<Key>"))-5, GFP_KERNEL);
+    strncpy(files[i].name, strstr(next, "<Key>") + 5, (strstr(next, "</Key>") - strstr(next, "<Key>"))-5);
+    files[i].name[(strstr(next, "</Key>") - strstr(next, "<Key>"))-5] = '\0'; // might not need.. ?
+
+    size_end = strstr(next, "</Size>");
+    files[i].size = simple_strtol(strstr(next, "<Size>") + 6, &size_end, 10);
+    
+    // Advance to closing tag.
+    next = strstr(next, "</Contents>");
+    // Check for a new tag, if NULL the while loop will terminate.
+    next = strstr(next, "<Contents>");
+    i++;
+  }
 }
 
 /*
@@ -118,35 +97,43 @@ static int hellofs_readdir(struct file *filp, void *dirent, filldir_t filldir)
 	char * buf = currentCommand->data;
 	int len = strlen(buf);
 	
-	// hellofs_parse_files(buf);
+	hellofs_parse_files(buf);
 	
 	//printk("Let's see: %s", files[0].name);
+	
 
 	int error;
 
 	unsigned int offset = filp->f_pos;
 
-        const char* name = "README_public.txt";
-        const ino_t ino = 1;
-        const int namelen = strlen(name);
+        //const char* name = "README_public.txt";
+        //const char * name;
+        //strcpy(name, files[0].name);
+        //printk("Hokay: %s\n", name);
+        //const ino_t ino = 1;
+        //const int namelen = strlen(name);
 
         struct hellofs_inode *de;
 
         if(offset > 0) return 0;
 
 
-	error = filldir(dirent, name, namelen, offset, ino, 0x1FF);
+	//error = filldir(dirent, name, namelen, offset, ino, 0x1FF);
 
-        offset += namelen + sizeof(*de);
+        //offset += namelen + sizeof(*de);
         
         // ****
-        const char* name2 = "hello.txt";
-        const ino_t ino2 = 2;
-        const int namelen2 = strlen(name2);
-        
-        error = filldir(dirent, name2, namelen2, offset, ino2, 0x1FF);
+        int i = 0;
+        while (files[i].name != NULL) {
+		      //const char* name2 = "hello.txt";
+		      const ino_t ino2 = i + 1;
+//		      const int namelen2 = strlen(name2);
+		      
+		      error = filldir(dirent, files[i].name, strlen(files[i].name), offset, ino2, 0x1FF);
 
-        offset += namelen2 + sizeof(*de);
+		      offset += strlen(files[i].name) + sizeof(*de);
+		      i++;
+		    }
         // ***
         
 
@@ -251,14 +238,14 @@ static struct file_operations hellofs_directory_operations = {
 	readdir:	hellofs_readdir,
 };
 
-static struct inode *get_hellofs_inode(struct super_block *sb, int is_dir)
+static struct inode *get_hellofs_inode(struct super_block *sb, int is_dir, int size)
 {
 	struct inode * inode = new_inode(sb);
 
 	if (inode) {
 		inode->i_mode = is_dir ? 040444 : 0100444; // Give us readonly for each user.
 		inode->i_uid = 0;
-		inode->i_size = 29;
+		inode->i_size = size;
 		inode->i_blocks = 1;
 		// inode->i_blksize = PAGE_CACHE_SIZE;
 		inode->i_gid = 0;
@@ -287,8 +274,18 @@ static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, 
 {
 	int retval;
 
-//	printk(KERN_DEBUG "hellofs_lookup\n");
-
+ 	int i = 0;
+	while(files[i].name != NULL) {
+		//retval = strncmp(dentry->d_name.name, files[i].name, strlen(files[i].name));
+		if(strcmp(dentry->d_name.name, files[i].name) == 0) {
+			d_add(dentry, get_hellofs_inode(dir->i_sb, 0, files[i].size));
+			return NULL;
+		}
+		i++;
+	}
+	d_add(dentry, NULL);
+	return NULL;
+	/*
 	retval = memcmp(dentry->d_name.name, "README_public.txt", 17); // push this comparison to get_hellofs_inode()
 	if(!retval) {
 		d_add(dentry, get_hellofs_inode(dir->i_sb, 0));     
@@ -302,7 +299,7 @@ static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, 
 			d_add(dentry, NULL);
 		}
 	}
-	return NULL;
+	return NULL;*/
 }
 
 static struct inode_operations hellofs_dir_inode_operations = {
@@ -346,7 +343,7 @@ static int hellofs_fill_super(struct super_block * sb, void * data, int silent)
 		//return -ENOMEM;
 //	}
 
-	sb->s_root = d_alloc_root(get_hellofs_inode(sb, 1));
+	sb->s_root = d_alloc_root(get_hellofs_inode(sb, 1, 0));
 	//sb->s_root = d_alloc_root(inode);
 	//if (!sb->s_root) {
 	//	iput(inode);
