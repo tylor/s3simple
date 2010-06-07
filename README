@@ -8,14 +8,14 @@ Quick build and test instructions:
 
 $ make
 $ sudo su
-# insmod hellofs.ko
-# ./getinmemory & # run getinmemory in the background
-# mount -t hellofs /dev/zero /mnt/ # mount virtual device on /mnt
+# insmod s3simple.ko
+# ./s3simple & # run s3simple in the background
+# mount -t s3simple /dev/zero /mnt/ # mount virtual device on /mnt
 # cat /mnt/hello.txt # take a look at the file's contents
 # umount /mnt/
-# ps # to get the [pid] of getinmemory
-# kill [pid] # shut down getinmemory
-# rmmod hellofs
+# ps # to get the [pid] of s3simple
+# kill [pid] # shut down s3simple
+# rmmod s3simple
 # exit
 $ make clean # to clean up the compiled files
 
