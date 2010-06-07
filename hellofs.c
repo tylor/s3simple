@@ -10,7 +10,7 @@
 #include <linux/string.h>
 #include <asm/uaccess.h> // needed to copy to/from user
 
-#include "hellofs.h"
+// #include "hellofs.h"
 
 //static struct super_operations hellofs_ops;
 static struct inode_operations hellofs_dir_inode_operations;
