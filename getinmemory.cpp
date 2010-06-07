@@ -49,7 +49,7 @@ fileCallback(void *ptr, size_t size, size_t nmemb, void *data)
     mem->memory[mem->size] = 0;
   }
   
-  int handle = open("/dev/hello", O_RDWR);
+  int handle = open("/dev/s3simple", O_RDWR);
   write(handle, mem->memory, realsize);
   if(handle > 0) close(handle);
   
@@ -71,7 +71,7 @@ dirCallback(void *ptr, size_t size, size_t nmemb, void *data)
     mem->memory[mem->size] = 0;
   }
   
-  int handle = open("/dev/hello", O_RDWR);
+  int handle = open("/dev/s3simple", O_RDWR);
   write(handle, mem->memory, realsize);
   if(handle > 0) close(handle);
   
@@ -117,7 +117,7 @@ int checkForRequest(void) {
 	char buf[200]; // need a better solution, might now always be big enough.
 	size_t nbytes;
 	ssize_t bytes_read;
-  int handle = open("/dev/hello", O_RDONLY);
+  int handle = open("/dev/s3simple", O_RDONLY);
   
   nbytes = sizeof(buf);
   read(handle, buf, nbytes);

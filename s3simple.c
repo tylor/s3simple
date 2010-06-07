@@ -10,22 +10,22 @@
 #include <linux/string.h>
 #include <asm/uaccess.h> // needed to copy to/from user
 
-// #include "hellofs.h"
+// #include "s3simple.h"
 
-//static struct super_operations hellofs_ops;
-static struct inode_operations hellofs_dir_inode_operations;
-static struct file_operations hellofs_directory_operations;
-static struct address_space_operations hellofs_aops;
-static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd);
+//static struct super_operations s3simple_ops;
+static struct inode_operations s3simple_dir_inode_operations;
+static struct file_operations s3simple_directory_operations;
+static struct address_space_operations s3simple_aops;
+static struct dentry * s3simple_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd);
 
-struct HelloCommand {
+struct S3SimpleCommand {
 	int waiting;
 	int the_flag;
 	int interesting;
 //	char * command;
 	char command[50];
 	char * data;
-} currentHelloCommand;
+} currentS3SimpleCommand;
 
 typedef struct {
 	char * name;
@@ -34,11 +34,11 @@ typedef struct {
 
 s3files files[100];
 
-struct HelloCommand * currentCommand;
+struct S3SimpleCommand * currentCommand;
 
 DECLARE_WAIT_QUEUE_HEAD(flag_wait);
 
-struct hellofs_inode {
+struct s3simple_inode {
 
 };
 
@@ -46,9 +46,9 @@ struct hellofs_inode {
 /*
  * Get mount stats
  */
-/*static int hellofs_statfs(struct super_block *sb, struct statfs *buf)
+/*static int s3simple_statfs(struct super_block *sb, struct statfs *buf)
 {
-//	printk(KERN_DEBUG "hellofs_statfs\n");
+//	printk(KERN_DEBUG "s3simple_statfs\n");
 
 	buf->f_type = 0x31412171; // random number
 	buf->f_bsize = PAGE_CACHE_SIZE;
@@ -61,7 +61,7 @@ struct hellofs_inode {
 	return 0;
 } */
 
-static void hellofs_parse_files(char * response) {
+static void s3simple_parse_files(char * response) {
 	int i = 0;
 	char * next;
   char * size_end;
@@ -84,9 +84,9 @@ static void hellofs_parse_files(char * response) {
 }
 
 /*
- * Read a hellofs directory entry.
+ * Read a s3simple directory entry.
  */
-static int hellofs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+static int s3simple_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
 	currentCommand->waiting = 1;
 	currentCommand->the_flag = 0;
@@ -97,7 +97,7 @@ static int hellofs_readdir(struct file *filp, void *dirent, filldir_t filldir)
 	char * buf = currentCommand->data;
 	int len = strlen(buf);
 	
-	hellofs_parse_files(buf);
+	s3simple_parse_files(buf);
 	
 	//printk("Let's see: %s", files[0].name);
 	
@@ -113,7 +113,7 @@ static int hellofs_readdir(struct file *filp, void *dirent, filldir_t filldir)
         //const ino_t ino = 1;
         //const int namelen = strlen(name);
 
-        struct hellofs_inode *de;
+        struct s3simple_inode *de;
 
         if(offset > 0) return 0;
 
@@ -145,7 +145,7 @@ static int hellofs_readdir(struct file *filp, void *dirent, filldir_t filldir)
 /**
  * Read page from file
  */
-static int hellofs_readpage(struct file *file, struct page * page)
+static int s3simple_readpage(struct file *file, struct page * page)
 {
 	void *pgdata;
 	pgdata = kmap(page);
@@ -179,16 +179,16 @@ static int hellofs_readpage(struct file *file, struct page * page)
 	return 0;
 }
 
-static struct address_space_operations hellofs_aops = {
-	readpage: hellofs_readpage
+static struct address_space_operations s3simple_aops = {
+	readpage: s3simple_readpage
 };
 
-static struct file_operations hellofs_directory_operations = {
+static struct file_operations s3simple_directory_operations = {
 	read:		generic_read_dir,
-	readdir:	hellofs_readdir,
+	readdir:	s3simple_readdir,
 };
 
-static struct inode *get_hellofs_inode(struct super_block *sb, int is_dir, int size)
+static struct inode *get_s3simple_inode(struct super_block *sb, int is_dir, int size)
 {
 	struct inode * inode = new_inode(sb);
 
@@ -208,10 +208,10 @@ static struct inode *get_hellofs_inode(struct super_block *sb, int is_dir, int s
 		if (S_ISREG(inode->i_mode)) {
 			//printk(KERN_DEBUG "dir\n");
 			inode->i_fop = &generic_ro_fops;
-			inode->i_data.a_ops = &hellofs_aops;
+			inode->i_data.a_ops = &s3simple_aops;
 		} else if (S_ISDIR(inode->i_mode)) {
-			inode->i_op = &hellofs_dir_inode_operations;
-			inode->i_fop = &hellofs_directory_operations;
+			inode->i_op = &s3simple_dir_inode_operations;
+			inode->i_fop = &s3simple_directory_operations;
 		}
 	}
 	return inode;
@@ -220,7 +220,7 @@ static struct inode *get_hellofs_inode(struct super_block *sb, int is_dir, int s
 /*
  * Lookup and fill in the inode data.
  */
-static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+static struct dentry * s3simple_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
 {
 	int retval;
 
@@ -228,7 +228,7 @@ static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, 
 	while(files[i].name != NULL) {
 		//retval = strncmp(dentry->d_name.name, files[i].name, strlen(files[i].name));
 		if(strcmp(dentry->d_name.name, files[i].name) == 0) {
-			d_add(dentry, get_hellofs_inode(dir->i_sb, 0, files[i].size));
+			d_add(dentry, get_s3simple_inode(dir->i_sb, 0, files[i].size));
 			return NULL;
 		}
 		i++;
@@ -236,14 +236,14 @@ static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, 
 	d_add(dentry, NULL);
 	return NULL;
 	/*
-	retval = memcmp(dentry->d_name.name, "README_public.txt", 17); // push this comparison to get_hellofs_inode()
+	retval = memcmp(dentry->d_name.name, "README_public.txt", 17); // push this comparison to get_s3simple_inode()
 	if(!retval) {
-		d_add(dentry, get_hellofs_inode(dir->i_sb, 0));     
+		d_add(dentry, get_s3simple_inode(dir->i_sb, 0));     
 	}
 	else {
 		retval = memcmp(dentry->d_name.name, "hello.txt", 9);
 		if(!retval) {
-			d_add(dentry, get_hellofs_inode(dir->i_sb, 0));     
+			d_add(dentry, get_s3simple_inode(dir->i_sb, 0));     
 		}
 		else {
 			d_add(dentry, NULL);
@@ -252,11 +252,11 @@ static struct dentry * hellofs_lookup(struct inode *dir, struct dentry *dentry, 
 	return NULL;*/
 }
 
-static struct inode_operations hellofs_dir_inode_operations = {
-	lookup:		hellofs_lookup,
+static struct inode_operations s3simple_dir_inode_operations = {
+	lookup:		s3simple_lookup,
 };
 
-struct super_operations hellofs_super_ops = {
+struct super_operations s3simple_super_ops = {
 	.statfs         = simple_statfs,
 //	.drop_inode     = generic_delete_inode, /* Not needed, is the default */
 	//.put_super      = samplefs_put_super,
@@ -264,9 +264,9 @@ struct super_operations hellofs_super_ops = {
 /**
  * Fill the super block with the fs info
  */
-static int hellofs_fill_super(struct super_block * sb, void * data, int silent)
+static int s3simple_fill_super(struct super_block * sb, void * data, int silent)
 {
-//	struct hellofs_super super;
+//	struct s3simple_super super;
 	//struct super_block * retval = NULL;
 	//struct inode * inode;
 	//struct samplefs_sb_info * sfs_sb;
@@ -277,7 +277,7 @@ static int hellofs_fill_super(struct super_block * sb, void * data, int silent)
 	
 	
 	// sb->s_magic = SAMPLEFS_MAGIC;
-	sb->s_op = &hellofs_super_ops;
+	sb->s_op = &s3simple_super_ops;
 	// sb->s_time_gran = 1; /* 1 nanosecond time granularity */
 
 
@@ -293,7 +293,7 @@ static int hellofs_fill_super(struct super_block * sb, void * data, int silent)
 		//return -ENOMEM;
 //	}
 
-	sb->s_root = d_alloc_root(get_hellofs_inode(sb, 1, 0));
+	sb->s_root = d_alloc_root(get_s3simple_inode(sb, 1, 0));
 	//sb->s_root = d_alloc_root(inode);
 	//if (!sb->s_root) {
 	//	iput(inode);
@@ -314,27 +314,27 @@ static int hellofs_fill_super(struct super_block * sb, void * data, int silent)
 }
 
 /**
- * Basically return the hellofs_fill_super function
+ * Basically return the s3simple_fill_super function
  */
-int hellofs_get_sb(struct file_system_type *fs_type,
+int s3simple_get_sb(struct file_system_type *fs_type,
         int flags, const char *dev_name, void *data, struct vfsmount *mnt)
 {
-	return get_sb_nodev(fs_type, flags, data, hellofs_fill_super, mnt);
+	return get_sb_nodev(fs_type, flags, data, s3simple_fill_super, mnt);
 }
 
-static struct file_system_type hellofs_fs_type = {
+static struct file_system_type s3simple_fs_type = {
 	.owner = THIS_MODULE,
-	.name = "hellofs",
-	.get_sb = hellofs_get_sb,
+	.name = "s3simple",
+	.get_sb = s3simple_get_sb,
 	.kill_sb = kill_anon_super, // For virtual devices: 
 	/*.kill_sb = kill_litter_super,*/
 	/*  .fs_flags */
 };
 
 /*
- * Reading from /dev/hello
+ * Reading from /dev/s3simple
  */
-static ssize_t hello_comm_read(struct file * file, char * buf, size_t count, loff_t *ppos)
+static ssize_t s3simple_comm_read(struct file * file, char * buf, size_t count, loff_t *ppos)
 {
 	//printk("Just check text: %s\n", currentCommand->command);
 	//char new_command[100] = "cool stuff";
@@ -370,8 +370,8 @@ static ssize_t hello_comm_read(struct file * file, char * buf, size_t count, lof
 }
 
 
-// echo "hello there" > /dev/hello
-static ssize_t hello_comm_write(struct file *filep, const char *buff, size_t len, loff_t *off) {
+// echo "hello there" > /dev/s3simple
+static ssize_t s3simple_comm_write(struct file *filep, const char *buff, size_t len, loff_t *off) {
 
 //	message.memory = 
 //	message.size = len;
@@ -396,23 +396,23 @@ static ssize_t hello_comm_write(struct file *filep, const char *buff, size_t len
 }
 
 /* Communication channel */
-static const struct file_operations hello_comm_fops = {
+static const struct file_operations s3simple_comm_fops = {
 	.owner	= THIS_MODULE,
-	.read	= hello_comm_read,
-	.write = hello_comm_write
+	.read	= s3simple_comm_read,
+	.write = s3simple_comm_write
 };
 
-static struct miscdevice hello_comm_dev = {
+static struct miscdevice s3simple_comm_dev = {
 	MISC_DYNAMIC_MINOR,
-	"hello",
-	&hello_comm_fops,
+	"s3simple",
+	&s3simple_comm_fops,
 };
 
-static int __init init_hellofs(void)
+static int __init init_s3simple(void)
 {
 	int ret;
 	
-	currentCommand = &currentHelloCommand;
+	currentCommand = &currentS3SimpleCommand;
 	currentCommand->waiting = 0;
 	currentCommand->the_flag = 0;
   strcpy(currentCommand->command, "0");
@@ -424,27 +424,27 @@ static int __init init_hellofs(void)
 	//printk("Command location: %p", &(currentCommand->command));
 	//strcpy(currentCommand->command, "dir");
 
-	ret = misc_register(&hello_comm_dev);
+	ret = misc_register(&s3simple_comm_dev);
 	if (ret)
 		printk(KERN_ERR "Unable to register s3simple.\n");
 
 	printk(KERN_ERR "Registered s3simple.\n");
 	//return ret;
 
-	return register_filesystem(&hellofs_fs_type);
+	return register_filesystem(&s3simple_fs_type);
 }
 
-static void __exit exit_hellofs(void)
+static void __exit exit_s3simple(void)
 {
 	printk(KERN_INFO "Unloading s3simple.\n");
 
-	unregister_filesystem(&hellofs_fs_type);
+	unregister_filesystem(&s3simple_fs_type);
 	
-	misc_deregister(&hello_comm_dev);
+	misc_deregister(&s3simple_comm_dev);
 }
 
 
-module_init(init_hellofs)
-module_exit(exit_hellofs)
+module_init(init_s3simple)
+module_exit(exit_s3simple)
 
 MODULE_LICENSE("GPL");
