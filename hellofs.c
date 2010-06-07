@@ -142,59 +142,9 @@ static int hellofs_readdir(struct file *filp, void *dirent, filldir_t filldir)
 	return 0;
 }
 
-/*
- * Reading from /dev/hello1
- */
-static char * hello_read()
-{
-	//char *hello_str = "Hello, world!\n";
-	//int cool = 0;
-	
-	//printk("Requested path: %s", file->f_path);
-	
-	currentCommand->waiting = 1;
-	currentCommand->the_flag = 0;
-
-	wait_event(flag_wait, (currentCommand->the_flag == 1)); // unconditionally wait
-	// char *hello_str = "Hello, worldsssss!\n";
-	//printk(KERN_INFO "Message working: %s.\n", Message);
-	
-	//return Message;
-	return "hmm";
-	/*
-	char *hello_str = Message;
-	//buf = Message;
-	
-	int len = strlen(hello_str);
-	
-	printk(KERN_INFO "Len here %d.\n");
-	printk(KERN_INFO "Count here %d.\n");
-	
-	// read whole string
-	if (count < len)
-		return len;
-		//return -EINVAL;
-
-		printk(KERN_INFO "Doesn't get here 6.\n");
-
-	if (*ppos != 0)
-		return 0;
-
-	// Shouldn't need to copy to user
-	//if (copy_to_user(buf, hello_str, len))
-		//return -EINVAL;
-
-	*ppos = len;
-
-	printk(KERN_INFO "Returning a read: %i\n", len);
-
-	return len;*/
-}
-
 /**
  * Read page from file
  */
-
 static int hellofs_readpage(struct file *file, struct page * page)
 {
 	void *pgdata;
@@ -382,15 +332,6 @@ static struct file_system_type hellofs_fs_type = {
 };
 
 /*
- * Simple function to get a hello world from Amazon S3.
- */
-static char * get_from_s3(void)
-{
-	char *new_string = "Hello, blah!\n";
-	return new_string;
-}
-
-/*
  * Reading from /dev/hello
  */
 static ssize_t hello_comm_read(struct file * file, char * buf, size_t count, loff_t *ppos)
@@ -467,20 +408,6 @@ static struct miscdevice hello_comm_dev = {
 	&hello_comm_fops,
 };
 
-/* Device */
-static const struct file_operations hello_fops = {
-	.owner	= THIS_MODULE,
-	.read	= hello_read,
-	//.write = hello_write
-	// presumably can do .write
-};
-
-static struct miscdevice hello_dev = {
-	MISC_DYNAMIC_MINOR,
-	"hello1",
-	&hello_fops,
-};
-
 static int __init init_hellofs(void)
 {
 	int ret;
@@ -498,11 +425,10 @@ static int __init init_hellofs(void)
 	//strcpy(currentCommand->command, "dir");
 
 	ret = misc_register(&hello_comm_dev);
-	ret = misc_register(&hello_dev);
 	if (ret)
-		printk(KERN_ERR "Unable to register \"Hello, world!\" misc device\n");
+		printk(KERN_ERR "Unable to register s3simple.\n");
 
-	printk(KERN_ERR "Tylor sez: Registered my device.\n");
+	printk(KERN_ERR "Registered s3simple.\n");
 	//return ret;
 
 	return register_filesystem(&hellofs_fs_type);
@@ -510,12 +436,11 @@ static int __init init_hellofs(void)
 
 static void __exit exit_hellofs(void)
 {
-	printk(KERN_INFO "unloading hellofs\n");
+	printk(KERN_INFO "Unloading s3simple.\n");
 
 	unregister_filesystem(&hellofs_fs_type);
 	
 	misc_deregister(&hello_comm_dev);
-	misc_deregister(&hello_dev);
 }
 
 
